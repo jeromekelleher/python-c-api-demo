@@ -1,5 +1,6 @@
 #include <Python.h>
-#include "algorithm.h"
+#define DEMO_MODULE
+#include "demomodule.h"
 
 static PyObject *
 demo_fancy_algorithm(PyObject *self, PyObject *args)
@@ -11,6 +12,7 @@ demo_fancy_algorithm(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "dd", &x, &y)) {
         goto out;
     }
+    printf("demo running fancy_algorithm\n");
     err = fancy_algorithm(x, y, &result);
     if (err != 0) {
         PyErr_Format(PyExc_ValueError, "Error %d occured in fancy_algorithm", err);
@@ -38,5 +40,24 @@ static struct PyModuleDef demomodule = {
 PyMODINIT_FUNC
 PyInit_demo(void)
 {
-    return PyModule_Create(&demomodule);
+    PyObject *m;
+    static void *demo_API[1];
+    PyObject *c_api_object;
+
+    m = PyModule_Create(&demomodule);
+    if (m == NULL) {
+        goto out;
+    }
+
+    /* Initialize the C API pointer array */
+    demo_API[0] = (void *) fancy_algorithm;
+
+    /* Create a Capsule containing the API pointer array's address */
+    c_api_object = PyCapsule_New((void *)demo_API, "demo._C_API", NULL);
+
+    if (c_api_object != NULL) {
+        PyModule_AddObject(m, "_C_API", c_api_object);
+    }
+out:
+    return m;
 }
